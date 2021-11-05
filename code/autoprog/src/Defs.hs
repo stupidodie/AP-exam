@@ -1,6 +1,5 @@
--- General type definitions for AutoProg. Do not modify anything!
 module Defs where
-
+-- General type definitions for AutoProg. Do not modify anything!
 -- General error-reporting type
 
 type EM a = Either ErrMsg a

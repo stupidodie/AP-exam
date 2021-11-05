@@ -1,0 +1,72 @@
+cabal-version: 1.12
+
+-- This file has been generated from package.yaml by hpack version 0.34.4.
+--
+-- see: https://github.com/sol/hpack
+
+name:           autoprog
+version:        0.0.0
+build-type:     Simple
+
+library
+  exposed-modules:
+      Defs
+      Parser
+      Resolver
+      Coder
+  other-modules:
+      CoderImpl
+      ParserImpl
+      ResolverImpl
+      Paths_autoprog
+  hs-source-dirs:
+      src
+  build-depends:
+      base
+    , containers
+    , mtl
+    , parsec
+    , text
+  default-language: Haskell2010
+
+executable autoprog
+  main-is: Driver.hs
+  other-modules:
+      Coder
+      CoderImpl
+      Defs
+      Parser
+      ParserImpl
+      Resolver
+      ResolverImpl
+      Paths_autoprog
+  hs-source-dirs:
+      src
+      app
+  build-depends:
+      base
+    , containers
+    , mtl
+    , parsec
+    , text
+  default-language: Haskell2010
+
+test-suite primary-test-suite
+  type: exitcode-stdio-1.0
+  main-is: BlackBox.hs
+  other-modules:
+      Paths_autoprog
+  hs-source-dirs:
+      tests
+  build-depends:
+      QuickCheck
+    , autoprog
+    , base
+    , containers
+    , mtl
+    , parsec
+    , tasty
+    , tasty-hunit
+    , tasty-quickcheck
+    , text
+  default-language: Haskell2010
