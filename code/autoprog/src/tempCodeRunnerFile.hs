@@ -1,0 +1,1 @@
+(pTypeScal <++ pType1 <++ pTypeVar <++ (do cname<-pCName; return (PTApp cname [])))
