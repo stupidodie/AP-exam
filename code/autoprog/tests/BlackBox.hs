@@ -10,6 +10,7 @@ import Coder
 
 import Test.Tasty
 import Test.Tasty.HUnit
+import Resolver (declare)
 
 main :: IO ()
 main = defaultMain $ localOption (mkTimeout 1000000) tests
@@ -28,7 +29,12 @@ tests = testGroup "Minimal tests" [
       do tce <- declare [td0]
          tf <- case lookup "T" tce of Just tf -> return tf; _ -> Left "no T"
          tf [STVar "a'"]
-      @?= Right st0
+      @?= Right st0,
+    testCase "declare2" $
+      do tce<- declare [td1] 
+         tf1 <- case lookup "C" tce of Just tf -> return tf; _ -> Left "no C" 
+         tf1 [STVar "bbb"]
+      @?= Right st1
   ],
   testGroup "Coder" [
     testCase "pick" $
@@ -53,3 +59,5 @@ tests = testGroup "Minimal tests" [
        dfs (Found a) = [a]
        dfs (Choice ts) = concatMap dfs ts
        e0 = Lam "X" (Var "X")
+       td1=TDRcd ("T", ["a"]) "C" [("x", PTVar "a"), ("f", PTApp "(->)" [PTVar "a", PTVar "a"])]
+       st1=STRcd "C" [("x",STVar "bbb"),("f",STArrow (STVar "bbb") (STVar "bbb"))]

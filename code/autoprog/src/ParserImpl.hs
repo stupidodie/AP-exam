@@ -5,8 +5,6 @@ import Data.Char
 import Text.ParserCombinators.ReadP
 import Control.Applicative((<|>))
 
-import Debug.Trace
-import Distribution.Fields.ParseResult (parseString)
 lexeme :: ReadP a -> ReadP a
 lexeme p = do a <- p; whitespace; return a
 
@@ -62,7 +60,7 @@ pTDeclz=do tDel <-pTDecl  `sepBy` symbol ";"; return tDel <++ return mempty
 pFDecl :: ReadP [(String, PType)]
 pFDecl=do field <-pVName  `sepBy1` symbol ","; symbol "::" ; type'<-pType; return $ map (\x-> (x,type')) field
 pType:: ReadP PType
-pType=pTypeOther `chainr1` (do symbol "->"; return ( \x y->  PTApp "->" [x,y] ))
+pType=pTypeOther `chainr1` (do symbol "->"; return ( \x y->  PTApp "(->)" [x,y] ))
 pTypeOther ::ReadP PType
 pTypeOther =  pTypeVar <++ pTypeCon<++ pTypeScal <++ pType1
 pTypeScal:: ReadP PType
