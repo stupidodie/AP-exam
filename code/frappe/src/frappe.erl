@@ -19,8 +19,6 @@
 % You may have other exports as well
 -export([handle_call/3,init/1,handle_cast/2]).
 
-
-
 fresh(Capcity) -> gen_server:start(?MODULE, Capcity, []).
 
 set(FS, Key, Value, C) ->gen_server:call(FS,{set,Key,Value,C}).
@@ -192,7 +190,7 @@ handle_cast({recoverJudge,Key,Option1,Option2},{OriginalCapcity,CurrentCapcity,L
 handle_cast({afterRecover,Key,Option},{OriginalCapcity,CurrentCapcity,List})->
     case searchItem(List, Key) of
       true->
-        {_,Value,C,Judge1,W1,Judge2,R1,S1}=findItem(List, Key),
+        {_,Value,C,Judge1,W1,Judge2,R1,S1}=findItem(List, Key), 
         case Judge1 of
           false->
             case R1==[] of
@@ -201,7 +199,7 @@ handle_cast({afterRecover,Key,Option},{OriginalCapcity,CurrentCapcity,List})->
               end;
             true->{noreply,{OriginalCapcity,CurrentCapcity,setJudge1(Key,[{Key,Value,C,false,W1,Judge2,R1,S1}|List],false)}}
            end;
-        false->{noreply,{OriginalCapcity,CurrentCapcity,List}}
+      false->{noreply,{OriginalCapcity,CurrentCapcity,List}}
   end;
 handle_cast({upsert,From,Type,Key},{OriginalCapcity,CurrentCapcity,List})->
   case Type of 
@@ -228,13 +226,14 @@ handle_cast({upsert,From,Type,Key},{OriginalCapcity,CurrentCapcity,List})->
                 {noreply,{OriginalCapcity,NewCapcity-C,[{Key,Val,C,false,[],false,[],[]}|NewList]}}
             end;
           true-> {_,_,C1,J1,W1,J2,R1,S1}=findItem(List, Key),
-          case J1 of 
-          false->
-          ListAfterDelete=deleteItem(List, Key),
-            case C =< CurrentCapcity+C1 of
-              true->gen_server:reply(From, ok),{noreply,{OriginalCapcity,CurrentCapcity+C1-C,[{Key,Val,C,J1,W1,J2,R1,S1}|ListAfterDelete]}};
-              false->{NewCapcity,NewList}=releaseItem(C,CurrentCapcity+C1,ListAfterDelete),
-              {noreply,ok,{OriginalCapcity,NewCapcity-C,[{Key,Val,C,false,[],false,[],S1}|NewList]}}
+            case J1 of 
+            false->
+              ListAfterDelete=deleteItem(List, Key),
+                case C =< (CurrentCapcity+C1) of
+                  true->gen_server:reply(From, ok),{noreply,{OriginalCapcity,CurrentCapcity+C1-C,[{Key,Val,C,J1,W1,J2,R1,S1}|ListAfterDelete]}};
+                  false->{NewCapcity,NewList}=releaseItem(C,CurrentCapcity+C1,ListAfterDelete),
+                  gen_server:reply(From, ok),
+                  {noreply,{OriginalCapcity,NewCapcity-C,[{Key,Val,C,false,[],false,[],S1}|NewList]}}
             end;
           true->{noreply,{OriginalCapcity,CurrentCapcity,List}}
           end
