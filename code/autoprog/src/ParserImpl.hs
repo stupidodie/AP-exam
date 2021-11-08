@@ -79,14 +79,14 @@ add a = foldr (:) [a]
 parseStringType :: String -> EM PType
 parseStringType s =
   case readP_to_S (between whitespace eof pType) s of
-        [] -> Left "no parse"
+        [] -> Left "parse Error"
         [(idb, _)] ->  Right idb
         _ -> error "ambiguous grammar"
 
 parseStringTDeclz :: String -> EM [TDecl]
 parseStringTDeclz s= 
     case readP_to_S (between whitespace eof pTDeclz) s of
-        [] -> Left "no parse"
+        [] -> Left "parse Error"
         [(idb, _)] ->  Right idb
         _ ->  error "ambiguous grammar"
 
@@ -96,10 +96,11 @@ main= do
   -- print (parseStringType "F G  a->B x")
   -- print (parseStringType "F x -> (y, A)")
   -- print (parseStringType "F x -> (y, A)") 
-  -- print (parseStringType "A")
-  -- print (parseStringType "z\'123 -> z{-12 -} z3-}")
+  print (parseStringType "A")
+  print (parseStringType "z\'123 -> z{-12 -} z3-}")
   -- print (parseStringType "z\'123 -> z{-12 -} -> zzz")
-  print (parseStringTDeclz "newtype Reader r a = Rd {runRd :: r -> a}")
-  print (parseStringTDeclz "type F x = x -> x")
-  print (parseStringTDeclz "newtype State s a = St {runSt :: s -> (a,s)}")
-  print (parseStringTDeclz "data State s a = St {runSt,b,c :: s -> (a,s)}")
+  -- print (parseStringTDeclz "newtype Reader r a = Rd {runRd :: r -> a}")
+  -- print (parseStringTDeclz "type F x = x -> x")
+  -- print (parseStringTDeclz "newtype State s a = St {runSt :: s -> (a,s)}")
+  -- print (parseStringTDeclz "data State s a = St {runSt,b,c :: s -> (a,s)}")
+  -- print(parseStringTDeclz "data State s a = St {b::s->a->s}")
