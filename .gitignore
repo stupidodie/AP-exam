@@ -7,3 +7,4 @@ code/autoprog/src/.vscode
 code/.DS_Store
 code/autoprog/src/tempCodeRunnerFile.hs
 
+*.swp
