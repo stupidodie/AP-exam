@@ -54,14 +54,6 @@ judgeDuplicatedName::[TVName]->Bool
 judgeDuplicatedName ts = length ts == length ( Data.Set.fromList ts)
 
 convertPTypeToSType::PType ->TCEnv-> [SType]->(EM SType,[SType])
--- convertPTypeToSType pt tce [st]= 
---     case pt of
---         (PTVar _)-> Right st
---         (PTApp cname ptList)->
---             case lookup cname tce of
---                 -- Just f->case f $ map (`convertPTypeToSType` tce) ptList of (Right stype)-> stype; _->error "convet error"
---                 Just f->f $ replicate (length ptList) st
---                 Nothing->error "not find"
 convertPTypeToSType (PTVar _) _ st= (Right (head st),drop 1 st)
 convertPTypeToSType (PTApp cname ptList) tce st=
     case lookup cname tce of
