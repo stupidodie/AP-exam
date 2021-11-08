@@ -181,7 +181,7 @@ handle_cast({upsert,From,Type,Key},{OriginalCapcity,CurrentCapcity,List})->
   end.
 
 handle_upsert_fun(Fun,Arg,Key,From,Me)->
-  spawn(
+  spawn_link(
     fun()->
       try Result=Fun(Arg),
       gen_server:cast(Me, {recoverJudge,Key,false,true}),
