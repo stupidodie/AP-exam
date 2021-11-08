@@ -149,8 +149,8 @@ handle_call({stable,Key,Ref},From,{OriginalCapcity,CurrentCapcity,List})->
     end;
 handle_call(all_items,_From,{OriginalCapcity,CurrentCapcity,List})->
   {reply,lists:map(fun({Key,Value,C,_,_,_,_,_})->{Key,Value,C} end, List),{OriginalCapcity,CurrentCapcity,List}};
-handle_call(stop,From,{_,_,List})->
-  lists:foreach(fun({_,_,_,_,W1,_,R1,S1})->sendStopMessage(W1),sendStopMessage(R1),sendStopMessage(S1) end, List),
+handle_call(stop,From,{_,_,_List})->
+  % lists:foreach(fun({_,_,_,_,W1,_,R1,S1})->sendStopMessage(W1),sendStopMessage(R1),sendStopMessage(S1) end, List),
   gen_server:reply(From, ok),
   gen_server:stop(self()).
   
@@ -267,11 +267,11 @@ sendRemovedMessage(Wait)->
     []->[];
     [{From,_}|Rest]->gen_server:reply(From, {error,removed}),sendRemovedMessage(Rest)
   end.
-sendStopMessage(List)->
-  case List of
-    []->[];
-    [{From,_}|Rest]->gen_server:reply(From, {error,stopped}),sendStopMessage(Rest)
-  end.
+% sendStopMessage(List)->
+%   case List of
+%     []->[];
+%     [{From,_}|Rest]->gen_server:reply(From, {error,stopped}),sendStopMessage(Rest)
+%   end.
 findItem(List,Key)->
    case List of
     [] ->[];
