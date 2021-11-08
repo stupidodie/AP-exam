@@ -53,7 +53,7 @@ handle_call({set,Key,Value,C}, _From,{OriginalCapcity,CurrentCapcity,List}) ->
           end;
         false->
           {NewCapcity,NewList}=releaseItem(C,CurrentCapcity,List),
-          {reply,ok,{OriginalCapcity,NewCapcity-C,NewList}}
+          {reply,ok,{OriginalCapcity,NewCapcity-C,[{Key,Value,C,false,[],false,[],[]}|NewList]}}
       end;
     false ->
       {reply,{error,"invalid cost"},{OriginalCapcity,CurrentCapcity,List}}
@@ -62,14 +62,20 @@ handle_call({read,Key},_From,{OriginalCapcity,CurrentCapcity,List})->
   case searchItem(List, Key) of
     true->
       {Key1,Value1,C1,Judge1,Wait1,Judge2,R1,S1}=findItem(List, Key),
-      NewList=deleteItem(List, Key),
-      {reply,{ok,Value1},{OriginalCapcity,CurrentCapcity,[{Key1,Value1,C1,Judge1,Wait1,Judge2,R1,S1}|NewList]}};
+      case C1==0 of
+        false->
+          NewList=deleteItem(List, Key),
+          {reply,{ok,Value1},{OriginalCapcity,CurrentCapcity,[{Key1,Value1,C1,Judge1,Wait1,Judge2,R1,S1}|NewList]}};
+        true->{reply,nothing,{OriginalCapcity,CurrentCapcity,List}}
+      end;
     false->{reply,nothing,{OriginalCapcity,CurrentCapcity,List}}
   end;
 handle_call({insert,Key,Value,C},From,{OriginalCapcity,CurrentCapcity,List})->
   case searchItem(List, Key) of
     true->
-      {_,_,_,Judge1,_,Judge2,_,_}=findItem(List, Key),
+      {_,_,C1,Judge1,_,Judge2,_,_}=findItem(List, Key),
+      case C1==0 of
+        false->
       case  Judge1 of
         false->
           case Judge2 of
@@ -81,45 +87,60 @@ handle_call({insert,Key,Value,C},From,{OriginalCapcity,CurrentCapcity,List})->
           NewList=addWait(Key, From, {insert,Key,Value,C}, List),
           {noreply,{OriginalCapcity,CurrentCapcity,NewList}}
       end;
+    true->case C>OriginalCapcity of
+      true-> {reply,{error, invalidCost},{OriginalCapcity,CurrentCapcity,List}};
+      false->
+        case C =<CurrentCapcity of
+          true->{reply,ok,{OriginalCapcity,CurrentCapcity-C,[{Key,Value,C,false,[],false,[],[]}|List]}};
+          false->
+            {NewCapcity,NewList}=releaseItem(C,CurrentCapcity,List),
+            {reply,ok,{OriginalCapcity,NewCapcity-C,[{Key,Value,C,false,[],false,[],[]}|NewList]}}
+        end
+    end
+    end;
     false->
       case C>OriginalCapcity of
-        true-> {error, invalidCost};
+        true-> {reply,{error, invalidCost},{OriginalCapcity,CurrentCapcity,List}};
         false->
           case C =<CurrentCapcity of
             true->{reply,ok,{OriginalCapcity,CurrentCapcity-C,[{Key,Value,C,false,[],false,[],[]}|List]}};
             false->
               {NewCapcity,NewList}=releaseItem(C,CurrentCapcity,List),
-              {reply,ok,{OriginalCapcity,NewCapcity-C,NewList}}
+              {reply,ok,{OriginalCapcity,NewCapcity-C,[{Key,Value,C,false,[],false,[],[]}|NewList]}}
           end
       end
   end;
 handle_call({update,Key,Value,C},From,{OriginalCapcity,CurrentCapcity,List})->
   case searchItem(List, Key) of
-    false->{error, notFindKey};
+    false->{reply,{error, notFindKey},{OriginalCapcity,CurrentCapcity,List}};
     true->  
       case C>OriginalCapcity of
-        true-> {error, invalidCost};
-        false->{_,_,C1,Judge1,_,Judge2,_,_}=findItem(List, Key),
-        case  Judge1 of
-          %Just Update
-          false->
-            case Judge2 of 
-              false->ListAfterDelete=deleteItem(List, Key),
-                case C=< CurrentCapcity+C1 of
-                  true->{reply,ok,{OriginalCapcity,CurrentCapcity+C1-C,[{Key,Value,C,false,[],false,[],[]}|ListAfterDelete]}};
-                  false->
-                    {NewCapcity,NewList}=releaseItem(C,CurrentCapcity+C1,ListAfterDelete),
-                    {reply,ok,{OriginalCapcity,NewCapcity-C,[{Key,Value,C,false,[],false,[],[]}|NewList]}}
-                end;
-              true->NewList=addRecovery(Key,From,{update,Key,Value,C},List),
-              {noreply,{OriginalCapcity,CurrentCapcity,NewList}}
-            end;
+        true-> {reply,{error, invalidCost},{OriginalCapcity,CurrentCapcity,List}};
+        false->{_,_,C1,Judge1,_,Judge2,_,S1}=findItem(List, Key),
+          case C1 ==0 of
+            false->
+              case  Judge1 of
+                %Just Update
+              false->
+                case Judge2 of 
+                  false->ListAfterDelete=deleteItem(List, Key),
+                    case C=< CurrentCapcity+C1 of
+                      true->{reply,ok,{OriginalCapcity,CurrentCapcity+C1-C,[{Key,Value,C,false,[],false,[],[]}|ListAfterDelete]}};
+                      false->
+                      {NewCapcity,NewList}=releaseItem(C,CurrentCapcity+C1,ListAfterDelete),
+                    { reply,ok,{OriginalCapcity,NewCapcity-C,[{Key,Value,C,false,[],false,[],S1}|NewList]}}
+                    end;
+                  true->NewList=addRecovery(Key,From,{update,Key,Value,C},List),
+                  {noreply,{OriginalCapcity,CurrentCapcity,NewList}}
+                  end;
           % while the Key is occupied....
-          true->
-            NewList=addWait(Key, From,{update,Key,Value,C}, List),
-            {noreply,{OriginalCapcity,CurrentCapcity,NewList}}
-        end
+              true->
+                NewList=addWait(Key, From,{update,Key,Value,C}, List),
+                {noreply,{OriginalCapcity,CurrentCapcity,NewList}}
+              end;
+              true->{reply,{error, notFindKey},{OriginalCapcity,CurrentCapcity,List}}
       end
+    end
   end;
 handle_call({upsert,Key,Fun},From,{OriginalCapcity,CurrentCapcity,List})->
   case searchItem(List, Key) of
@@ -138,15 +159,22 @@ handle_call({upsert,Key,Fun},From,{OriginalCapcity,CurrentCapcity,List})->
           end;
     false->
       handle_upsert_fun(Fun,new,Key, From,self()),
-      {noreply,{OriginalCapcity,CurrentCapcity,setJudge1(Key, List,true)}}
+      {noreply,{OriginalCapcity,CurrentCapcity,[{Key,[],0,true,[],false,[],[]}|List]}}
   end;
 handle_call({stable,Key,Ref},From,{OriginalCapcity,CurrentCapcity,List})->
+  case searchItem(List, Key) of
+    true->
   {_,Val,C,Judge1,W1,Judge2,R1,S1}=findItem(List, Key),
-  
+  case C==0 of
+    false->
   case (Judge1==false) and  (Judge2==false) of
     true->NewList=deleteItem(List, Key),{reply,{Ref,Val},{OriginalCapcity,CurrentCapcity,[{Key,Val,C,Judge1,W1,Judge2,R1,S1}|NewList]}};
     false->{noreply,addStable(Key,From,{Key,Ref},List)}
     end;
+  true->{reply,{error,nokey},{OriginalCapcity,CurrentCapcity,List}}
+  end;
+  false->{reply,{error,nokey},{OriginalCapcity,CurrentCapcity,List}}
+  end;
 handle_call(all_items,_From,{OriginalCapcity,CurrentCapcity,List})->
   {reply,lists:map(fun({Key,Value,C,_,_,_,_,_})->{Key,Value,C} end, List),{OriginalCapcity,CurrentCapcity,List}};
 handle_call(stop,From,{_,_,_List})->
@@ -154,29 +182,63 @@ handle_call(stop,From,{_,_,_List})->
   gen_server:reply(From, ok),
   gen_server:stop(self()).
   
-handle_cast({recoverJudge,Key,Option1,Option2},{OriginalCapcity,CurrentCapcity,List})->
-  {noreply,{OriginalCapcity,CurrentCapcity,setJudge2(Key,setJudge1(Key, List, Option1),Option2)}};
-handle_cast({afterRecover,Key,Option},{OriginalCapcity,CurrentCapcity,List})->
-  {Key,Value,C,Judge1,W1,Judge2,R1,S1}=findItem(List, Key),
-  case R1==[] of
-    false->
-  case Judge1 of
-    true->NewList=deleteItem(List, Key), {noreply,{OriginalCapcity,CurrentCapcity,setJudge2(Key,[{Key,Value,C,Judge1,[R1|W1],Judge2,[],S1}|NewList],Option)}};
-    false->recover(R1),gen_server:cast(self(),{afterRecover,Key,Option})
+handle_cast({recoverJudge,Key,Option1,Option2},{OriginalCapcity,CurrentCapcity,List})-> 
+    {_,_,_,Judge1,_,_,_,_}=findItem(List, Key),
+  % if it 's false means it's been reset, then set it to the true
+  case Judge1 of 
+    true->{noreply,{OriginalCapcity,CurrentCapcity,setJudge2(Key,setJudge1(Key, List, Option1),Option2)}};
+    false->{noreply,{OriginalCapcity,CurrentCapcity,setJudge2(Key,setJudge1(Key, List, true),Option2)}}
   end;
-  true->NewList=deleteItem(List, Key),lists:foreach(fun({From,{_,Ref}})->gen_server:reply(From, {Ref,Value})end, S1),{noreply,{OriginalCapcity,CurrentCapcity,setJudge2(Key,[{Key,Value,C,Judge1,W1,Judge2,R1,[]}|NewList],Option)}}
-end;
+handle_cast({afterRecover,Key,Option},{OriginalCapcity,CurrentCapcity,List})->
+    case searchItem(List, Key) of
+      true->
+        {_,Value,C,Judge1,W1,Judge2,R1,S1}=findItem(List, Key),
+        case Judge1 of
+          false->
+            case R1==[] of
+              false->recover(R1),gen_server:cast(self(),{afterRecover,Key,Option});
+              true->NewList=deleteItem(List, Key),lists:foreach(fun({From,{_,Ref}})->gen_server:reply(From, {Ref,Value})end, S1),{noreply,{OriginalCapcity,CurrentCapcity,setJudge2(Key,[{Key,Value,C,Judge1,W1,Judge2,R1,[]}|NewList],Option)}}
+              end;
+            true->{noreply,{OriginalCapcity,CurrentCapcity,setJudge1(Key,[{Key,Value,C,false,W1,Judge2,R1,S1}|List],false)}}
+           end;
+        false->{noreply,{OriginalCapcity,CurrentCapcity,List}}
+  end;
 handle_cast({upsert,From,Type,Key},{OriginalCapcity,CurrentCapcity,List})->
   case Type of 
   unchange-> 
-    case searchItem(List, Key) of
-      true->{_,_,_,_,W1,_,_,_}=findItem(List, Key),recover(W1),gen_server:reply(From, ok),{noreply,{OriginalCapcity,CurrentCapcity,List}};
-      false->gen_server:reply(From, ok),{noreply,{OriginalCapcity,CurrentCapcity,List}}
-    end;
+      {_,_,C1,J1,W1,_,_,_}=findItem(List, Key),
+      case C1==0 of 
+        false->
+          case J1 of 
+          false-> recover(W1),gen_server:reply(From, ok),{noreply,{OriginalCapcity,CurrentCapcity,List}};
+          true->{noreply,{OriginalCapcity,CurrentCapcity,List}}
+          end;
+        true->NewList=deleteItem(List, Key),gen_server:reply(From, ok),{noreply,{OriginalCapcity,CurrentCapcity,NewList}}
+      end;
   {new_value,Val,C}->
-    case searchItem(List, Key) of
-      false->gen_server:reply(From, ok),{noreply,{OriginalCapcity,CurrentCapcity,[{Key,Val,C,false,[],false,[],[]}|List]}};
-      true->{_,_,_,J1,W1,J2,R1,S1}=findItem(List, Key),NewList=deleteItem(List, Key),gen_server:reply(From, ok),{noreply,{OriginalCapcity,CurrentCapcity,[{Key,Val,C,J1,W1,J2,R1,S1}|NewList]}}
+    case C>OriginalCapcity of
+      true->gen_server:reply(From,{error, invalidCost}),{noreply,{OriginalCapcity,CurrentCapcity,List}};
+      false->
+        case searchItem(List, Key) of
+          false->
+            case C =< CurrentCapcity of
+              true->gen_server:reply(From, ok),{noreply,{OriginalCapcity,CurrentCapcity-C,[{Key,Val,C,false,[],false,[],[]}|List]}};
+              false->
+                {NewCapcity,NewList}=releaseItem(C,CurrentCapcity,List),gen_server:reply(From, ok),
+                {noreply,{OriginalCapcity,NewCapcity-C,[{Key,Val,C,false,[],false,[],[]}|NewList]}}
+            end;
+          true-> {_,_,C1,J1,W1,J2,R1,S1}=findItem(List, Key),
+          case J1 of 
+          false->
+          ListAfterDelete=deleteItem(List, Key),
+            case C =< CurrentCapcity+C1 of
+              true->gen_server:reply(From, ok),{noreply,{OriginalCapcity,CurrentCapcity+C1-C,[{Key,Val,C,J1,W1,J2,R1,S1}|ListAfterDelete]}};
+              false->{NewCapcity,NewList}=releaseItem(C,CurrentCapcity+C1,ListAfterDelete),
+              {noreply,ok,{OriginalCapcity,NewCapcity-C,[{Key,Val,C,false,[],false,[],S1}|NewList]}}
+            end;
+          true->{noreply,{OriginalCapcity,CurrentCapcity,List}}
+          end
+        end
     end
   end.
 
