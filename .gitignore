@@ -1,2 +1,5 @@
 code/autoprog/.stack-work/*
 code/autoprog/.vscode/*
+code/frappe/.vscode
+code/frappe/*.beam
+
