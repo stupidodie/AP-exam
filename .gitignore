@@ -2,4 +2,8 @@ code/autoprog/.stack-work/*
 code/autoprog/.vscode/*
 code/frappe/.vscode
 code/frappe/*.beam
+code/autoprog/.DS_Store
+code/autoprog/src/.vscode
+code/.DS_Store
+code/autoprog/src/tempCodeRunnerFile.hs
 
