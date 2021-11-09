@@ -281,7 +281,7 @@ handle_cast({afterRecover, Key, Option}, {OriginalCapcity, CurrentCapcity, List}
         false ->
           case R1 == [] of
             false ->
-              recover(R1),
+              
               gen_server:cast(self(), {afterRecover, Key, Option});
             true ->
               NewList = deleteItem(List, Key),
@@ -302,6 +302,7 @@ handle_cast({afterRecover, Key, Option}, {OriginalCapcity, CurrentCapcity, List}
   end;
 handle_cast({upsert, From, Type, Key}, {OriginalCapcity, CurrentCapcity, List}) ->
   % throw({List,Type}),
+  Me=self(),
   case Type of
     unchange ->
       {_, _, C1, J1, W1, _, _, _} = findItem(List, Key),
@@ -309,7 +310,7 @@ handle_cast({upsert, From, Type, Key}, {OriginalCapcity, CurrentCapcity, List}) 
         false ->
           case J1 of
             false ->
-              recover(W1),
+              spawn(fun()->recover(W1,Me)end),
               gen_server:reply(From, ok),
               {noreply, {OriginalCapcity, CurrentCapcity, List}};
             true ->
@@ -349,7 +350,7 @@ handle_cast({upsert, From, Type, Key}, {OriginalCapcity, CurrentCapcity, List}) 
                   end;
                 false ->
                   % {Pid,_}=From,
-                  recover( lists:append(W1 , [{noreply,{insert, Key, Val, C}}])),
+                  spawn(fun()->recover( lists:append(W1 , [{noreply,{insert, Key, Val, C}}]),Me)end),
                   gen_server:reply(From, ok),
                   {noreply,{OriginalCapcity, CurrentCapcity, [{Key, Val, C, false, [], false, R1, S1} | ListAfterDelete]}}
               end;
@@ -414,10 +415,9 @@ addRecovery(Key, From, Operation, List) ->
   end.
 
 % Maybe the process1 slower than 2?
-recover(Wait) ->
+recover(Wait,Me) ->
   % erlang:display(Wait),
   % throw(lists:reverse(Wait)),
-  Me=self(),
   lists:foreach(fun({From, Operation}) ->
                    spawn(fun() ->
                             Result = gen_server:call(Me, Operation),
