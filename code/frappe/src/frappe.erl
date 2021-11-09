@@ -127,12 +127,19 @@ emptyState({call,From},{insert,From1,Key1,Value,C},{ServerId,OriginalCapcity,_Ke
   gen_statem:reply(From, true),
   gen_statem:reply(From1,ok),
   {next_state,normal,{ServerId,OriginalCapcity,Key1,Value,C,[]}};
+emptyState(cast,{insert,From1,Key1,Value,C},{ServerId,OriginalCapcity,_Key})->
+  gen_statem:reply(From1,ok),
+  {next_state,normal,{ServerId,OriginalCapcity,Key1,Value,C,[]}};
 emptyState({call,From},{update,From1,_Key1,_Value1,_C1},{_ServerId,_OriginalCapcity,_Key})->
   gen_statem:reply(From, false),
   gen_statem:reply(From1, {error,noneKey}),keep_state_and_data;
+emptyState(cast,{update,From1,_Key1,_Value1,_C1},{_ServerId,_OriginalCapcity,_Key})->
+  gen_statem:reply(From1, {error,noneKey}),keep_state_and_data;
 emptyState(cast,{upsert,From,Fun,Arg},{ServerId,OriginalCapcity,Key})->
   worker(self(), Fun, Arg),
-  {next_state,upsertState,{ServerId,From,OriginalCapcity,Key,0,0,[]}}.
+  {next_state,upsertState,{ServerId,From,OriginalCapcity,Key,0,0,[]}};
+emptyState(cast,stop,_)->stop;
+emptyState(_,_,_)->keep_state_and_data.
 
 
 recover(PId,List)->
