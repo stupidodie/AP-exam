@@ -162,12 +162,13 @@ handle_call({update, Key, Value, C}, From, {OriginalCapcity, CurrentCapcity, Lis
           {reply, {error, invalidCost}, {OriginalCapcity, CurrentCapcity, List}};
         false ->
           {_, _, C1, Judge1, _, Judge2, _, S1} = findItem(List, Key),
-          case C1 == 0 of
+
+          case Judge1 of
+            %Just Update
             false ->
-              case Judge1 of
-                %Just Update
+              case Judge2 of
                 false ->
-                  case Judge2 of
+                  case C1 == 0 of
                     false ->
                       ListAfterDelete = deleteItem(List, Key),
                       case C =< CurrentCapcity + C1 of
@@ -187,16 +188,16 @@ handle_call({update, Key, Value, C}, From, {OriginalCapcity, CurrentCapcity, Lis
                             [{Key, Value, C, false, [], false, [], S1} | NewList]}}
                       end;
                     true ->
-                      NewList = addRecovery(Key, From, {update, Key, Value, C}, List),
-                      {noreply, {OriginalCapcity, CurrentCapcity, NewList}}
+                      {reply, {error, notFindKey}, {OriginalCapcity, CurrentCapcity, List}}
                   end;
-                % while the Key is occupied....
                 true ->
-                  NewList = addWait(Key, From, {update, Key, Value, C}, List),
+                  NewList = addRecovery(Key, From, {update, Key, Value, C}, List),
                   {noreply, {OriginalCapcity, CurrentCapcity, NewList}}
               end;
+            % while the Key is occupied....
             true ->
-              {reply, {error, notFindKey}, {OriginalCapcity, CurrentCapcity, List}}
+              NewList = addWait(Key, From, {update, Key, Value, C}, List),
+              {noreply, {OriginalCapcity, CurrentCapcity, NewList}}
           end
       end
   end;
@@ -219,11 +220,11 @@ handle_call({upsert, Key, Fun}, From, {OriginalCapcity, CurrentCapcity, List}) -
           {noreply, {OriginalCapcity, CurrentCapcity, NewList}}
       end;
     false ->
-      handle_upsert_fun(Fun, new, Key, From, self()),
+      Me = self(),
+      handle_upsert_fun(Fun, new, Key, From, Me),
       {noreply,
        {OriginalCapcity, CurrentCapcity, [{Key, [], 0, true, [], false, [], []} | List]}}
   end;
-
 handle_call({stable, Key, Ref}, From, {OriginalCapcity, CurrentCapcity, List}) ->
   case searchItem(List, Key) of
     true ->
@@ -247,7 +248,6 @@ handle_call({stable, Key, Ref}, From, {OriginalCapcity, CurrentCapcity, List}) -
     false ->
       {reply, {error, nokey}, {OriginalCapcity, CurrentCapcity, List}}
   end;
-
 handle_call(all_items, _From, {OriginalCapcity, CurrentCapcity, List}) ->
   {reply,
    lists:map(fun({Key, Value, C, _, _, _, _, _}) -> {Key, Value, C} end, List),
@@ -259,6 +259,7 @@ handle_call(stop, From, {_, _, _List}) ->
 
 handle_cast({recoverJudge, Key, Option1, Option2},
             {OriginalCapcity, CurrentCapcity, List}) ->
+  % throw(List),
   {_, _, _, Judge1, _, _, _, _} = findItem(List, Key),
   % if it 's false means it's been reset, then set it to the true
   case Judge1 of
@@ -272,6 +273,7 @@ handle_cast({recoverJudge, Key, Option1, Option2},
        {OriginalCapcity, CurrentCapcity, setJudge2(Key, setJudge1(Key, List, true), Option2)}}
   end;
 handle_cast({afterRecover, Key, Option}, {OriginalCapcity, CurrentCapcity, List}) ->
+  % throw(List),
   case searchItem(List, Key) of
     true ->
       {_, Value, C, Judge1, W1, Judge2, R1, S1} = findItem(List, Key),
@@ -299,6 +301,7 @@ handle_cast({afterRecover, Key, Option}, {OriginalCapcity, CurrentCapcity, List}
       {noreply, {OriginalCapcity, CurrentCapcity, List}}
   end;
 handle_cast({upsert, From, Type, Key}, {OriginalCapcity, CurrentCapcity, List}) ->
+  % throw({List,Type}),
   case Type of
     unchange ->
       {_, _, C1, J1, W1, _, _, _} = findItem(List, Key),
@@ -323,28 +326,12 @@ handle_cast({upsert, From, Type, Key}, {OriginalCapcity, CurrentCapcity, List}) 
           gen_server:reply(From, {error, invalidCost}),
           {noreply, {OriginalCapcity, CurrentCapcity, List}};
         false ->
-          case searchItem(List, Key) of
+          {_, _, C1, J1, W1, J2, R1, S1} = findItem(List, Key),
+          case J1 of
             false ->
-              case C =< CurrentCapcity of
+              ListAfterDelete = deleteItem(List, Key),
+              case W1 == [] of
                 true ->
-                  gen_server:reply(From, ok),
-                  {noreply,
-                   {OriginalCapcity,
-                    CurrentCapcity - C,
-                    [{Key, Val, C, false, [], false, [], []} | List]}};
-                false ->
-                  {NewCapcity, NewList} = releaseItem(C, CurrentCapcity, List),
-                  gen_server:reply(From, ok),
-                  {noreply,
-                   {OriginalCapcity,
-                    NewCapcity - C,
-                    [{Key, Val, C, false, [], false, [], []} | NewList]}}
-              end;
-            true ->
-              {_, _, C1, J1, W1, J2, R1, S1} = findItem(List, Key),
-              case J1 of
-                false ->
-                  ListAfterDelete = deleteItem(List, Key),
                   case C =< CurrentCapcity + C1 of
                     true ->
                       gen_server:reply(From, ok),
@@ -358,50 +345,57 @@ handle_cast({upsert, From, Type, Key}, {OriginalCapcity, CurrentCapcity, List}) 
                       {noreply,
                        {OriginalCapcity,
                         NewCapcity - C,
-                        [{Key, Val, C, false, [], false, [], S1} | NewList]}}
+                        [{Key, Val, C, false, [], false, R1, S1} | NewList]}}
                   end;
-                true ->
-                  {noreply, {OriginalCapcity, CurrentCapcity, List}}
-              end
+                false ->
+                  % {Pid,_}=From,
+                  recover( lists:append(W1 , [{noreply,{insert, Key, Val, C}}])),
+                  gen_server:reply(From, ok),
+                  {noreply,{OriginalCapcity, CurrentCapcity, [{Key, Val, C, false, [], false, R1, S1} | ListAfterDelete]}}
+              end;
+            true ->
+              {noreply, {OriginalCapcity, CurrentCapcity, List}}              % end
           end
       end
   end.
 
 handle_upsert_fun(Fun, Arg, Key, From, Me) ->
-  spawn_link(fun() ->
-                try
-                  timer:sleep(400),
-                  Result = Fun(Arg),
-                  gen_server:cast(Me, {recoverJudge, Key, false, true}),
-                  case Result of
-                    {new_value, Val, C} ->
-                      gen_server:cast(Me, {upsert, From, {new_value, Val, C}, Key}),
-                      gen_server:cast(Me, {afterRecover, Key, false});
-                    _ ->
-                      gen_server:cast(Me, {upsert, From, unchange, Key}),
-                      gen_server:cast(Me, {afterRecover, Key, false})
-                  end
-                catch
-                  Term ->
-                    gen_server:cast(Me, {recoverJudge, Key, false, true}),
-                    case Term of
-                      {new_value, Val1, C1} ->
-                        gen_server:cast(Me, {upsert, From, {new_value, Val1, C1}, Key}),
-                        gen_server:cast(Me, {afterRecover, Key, false});
-                      _ ->
-                        gen_server:cast(Me, {upsert, From, unchange, Key}),
-                        gen_server:cast(Me, {afterRecover, Key, false})
-                    end;
-                  error:_ ->
-                    gen_server:cast(Me, {recoverJudge, Key, false, true}),
-                    gen_server:cast(Me, {upsert, From, unchange, Key}),
-                    gen_server:cast(Me, {afterRecover, Key, false});
-                  exit:_ ->
-                    gen_server:cast(Me, {recoverJudge, Key, false, true}),
-                    gen_server:cast(Me, {upsert, From, unchange, Key}),
-                    gen_server:cast(Me, {afterRecover, Key, false})
-                end
-             end).
+  % throw({Fun(Arg)}),
+  spawn(fun() ->
+           try
+             Result = Fun(Arg),
+             % throw(Result),
+             gen_server:cast(Me, {recoverJudge, Key, false, true}),
+             case Result of
+               {new_value, Val, C} ->
+                 gen_server:cast(Me, {upsert, From, {new_value, Val, C}, Key}),
+                 gen_server:cast(Me, {afterRecover, Key, false});
+               _ ->
+                 gen_server:cast(Me, {upsert, From, unchange, Key}),
+                 gen_server:cast(Me, {afterRecover, Key, false})
+             end
+           catch
+             Term ->
+               % throw(Term),
+               gen_server:cast(Me, {recoverJudge, Key, false, true}),
+               case Term of
+                 {new_value, Val1, C1} ->
+                   gen_server:cast(Me, {upsert, From, {new_value, Val1, C1}, Key}),
+                   gen_server:cast(Me, {afterRecover, Key, false});
+                 _ ->
+                   gen_server:cast(Me, {upsert, From, unchange, Key}),
+                   gen_server:cast(Me, {afterRecover, Key, false})
+               end;
+             error:_ ->
+               gen_server:cast(Me, {recoverJudge, Key, false, true}),
+               gen_server:cast(Me, {upsert, From, unchange, Key}),
+               gen_server:cast(Me, {afterRecover, Key, false});
+             exit:_ ->
+               gen_server:cast(Me, {recoverJudge, Key, false, true}),
+               gen_server:cast(Me, {upsert, From, unchange, Key}),
+               gen_server:cast(Me, {afterRecover, Key, false})
+           end
+        end).
 
 addRecovery(Key, From, Operation, List) ->
   case List of
@@ -421,10 +415,16 @@ addRecovery(Key, From, Operation, List) ->
 
 % Maybe the process1 slower than 2?
 recover(Wait) ->
+  % erlang:display(Wait),
+  % throw(lists:reverse(Wait)),
+  Me=self(),
   lists:foreach(fun({From, Operation}) ->
                    spawn(fun() ->
-                            Result = gen_server:call(self(), Operation),
-                            gen_server:reply(From, Result)
+                            Result = gen_server:call(Me, Operation),
+                            case From == noreply of
+                            false->gen_server:reply(From, Result);
+                            true->noreply
+                            end
                          end)
                 end,
                 lists:reverse(Wait)).
