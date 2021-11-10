@@ -10,9 +10,7 @@ import Coder
 
 import Test.Tasty
 import Test.Tasty.HUnit
-import Resolver (declare)
 
-import Debug.Trace
 main :: IO ()
 main = defaultMain $ localOption (mkTimeout 1000000) tests
 
@@ -91,7 +89,7 @@ tests = testGroup "Minimal tests" [
       testCase "produce2" $
         do e<-dfs (produce [] (STRcd "C" [("f",STArrow (STVar "bbb") (STVar "bbb")),("x",STVar "bbb")]))
            return $ case e of
-                      RCons "C" [("x",Var x),("f",Lam y (Var z))]| z==x->RCons "C" [("x",Var "X"),("f",Lam "X" (Var "X"))]
+                      RCons "C" [("x",Var x),("f",Lam _ (Var z))]| z==x->RCons "C" [("x",Var "X"),("f",Lam "X" (Var "X"))]
                       _ -> e
         @?= [RCons "C" [("x",Var "X"),("f",Lam "X" (Var "X"))]]
     ]]
