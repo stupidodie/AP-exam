@@ -2,7 +2,6 @@ module ResolverImpl where
 
 import Defs
 import qualified Data.Set
-import Debug.Trace
 resolve :: TCEnv -> (TVName -> EM SType) -> PType -> EM SType
 resolve tce tve pt=
     case pt of
@@ -19,7 +18,7 @@ updateEnv ::[TDecl]->TCEnv -> TCEnv
 updateEnv x tce = foldl (flip bindEnv) tce x
 functionCorr::TCName->[TVName]->PType->TCEnv->[SType]->EM SType
 functionCorr cname vnameList pt tce st =
-        if length st==length vnameList then case convertPTypeToSType pt tce (generateStList vnameList pt st) of (Right x,st')->Right x ;_->error "Error" else Left $ "bad args for tycon "++ cname
+        if length st==length vnameList then case convertPTypeToSType pt tce (generateStList vnameList pt st) of (Right x,_)->Right x ;_->error "Error" else Left $ "bad args for tycon "++ cname
 
 bindEnv::TDecl->TCEnv->TCEnv
 bindEnv (TDSyn (cname,vnameList) pt) tce=
@@ -48,7 +47,7 @@ getName (PTApp _ xs)= concatMap getName xs
 convertfpList::[(FName, PType)]->[SType]-> TCEnv ->[(FName, SType)]
 convertfpList fpList st tce=
     case fpList of
-        ((fname,pt):xs)->let result=convertPTypeToSType pt tce st in (fname,case result of (Right x,st1)->x;err->error $"Wrong"++show err):convertfpList xs (snd result) tce
+        ((fname,pt):xs)->let result=convertPTypeToSType pt tce st in (fname,case result of (Right x,_)->x;err->error $"Wrong"++show err):convertfpList xs (snd result) tce
         []->[]
 judgeDuplicatedName::[TVName]->Bool
 judgeDuplicatedName ts = length ts == length ( Data.Set.fromList ts)
@@ -56,8 +55,7 @@ judgeDuplicatedName ts = length ts == length ( Data.Set.fromList ts)
 convertPTypeToSType::PType ->TCEnv-> [SType]->(EM SType,[SType])
 convertPTypeToSType (PTVar _) _ st= (Right (head st),drop 1 st)
 convertPTypeToSType (PTApp cname ptList) tce st=
-    case lookup cname tce of
-       -- Just f->case f $ map (`convertPTypeToSType` tce) ptList of (Right stype)-> stype; _->error "convet error"
+    case lookup cname tce of 
         Nothing->error "not find"
         Just f->
             case cname of

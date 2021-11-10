@@ -63,7 +63,13 @@ tests = testGroup "Minimal tests" [
       do tce<- declare [td4] 
          tf1 <- case lookup "State" tce of Just tf -> return tf; _ -> Left "no T" 
          tf1 [STVar "bbb",STVar "ccc"]
-      @?= Right st4
+      @?= Right st4,
+    testCase "declare5" $
+      do tce<- declare [td4] 
+         tf1 <- case lookup "State" tce of Just tf -> return tf; _ -> Left "no T" 
+         tf1 [STProd (STVar "bbb")  (STVar "bbb"),STVar "ccc"]
+      @?= Right st5
+
   ],
   testGroup "Coder" [
     testCase "pick" $
@@ -81,7 +87,13 @@ tests = testGroup "Minimal tests" [
          return $ case e of
                     Lam x (Var x') | x' == x -> e0
                     _ -> e 
-      @?= [e0]
+      @?= [e0],
+      testCase "produce2" $
+        do e<-dfs (produce [] (STRcd "C" [("f",STArrow (STVar "bbb") (STVar "bbb")),("x",STVar "bbb")]))
+           return $ case e of
+                      RCons "C" [("x",Var x),("f",Lam y (Var z))]| z==x->RCons "C" [("x",Var "X"),("f",Lam "X" (Var "X"))]
+                      _ -> e
+        @?= [RCons "C" [("x",Var "X"),("f",Lam "X" (Var "X"))]]
     ]]
  where pt0 = PTApp "(->)" [PTVar "a", PTVar "a"]
        td0 = TDSyn ("T", ["a"]) pt0
@@ -99,3 +111,4 @@ tests = testGroup "Minimal tests" [
        td1=TDRcd ("T", ["a"]) "C" [("x", PTVar "a"), ("f", PTApp "(->)" [PTVar "a", PTVar "a"])]
        st1=STRcd "C" [("x",STVar "bbb"),("f",STArrow (STVar "bbb") (STVar "bbb"))]
        pt2=PTApp "F" [PTApp "G" [],PTVar "x"]
+       st5=STRcd "St" [("b",STArrow (STProd (STVar "bbb") (STVar "bbb")) (STArrow (STVar "ccc") (STProd (STVar "bbb") (STVar "bbb"))))]

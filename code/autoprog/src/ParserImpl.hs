@@ -104,3 +104,4 @@ main= do
   -- print (parseStringTDeclz "newtype State s a = St {runSt :: s -> (a,s)}")
   -- print (parseStringTDeclz "data State s a = St {runSt,b,c :: s -> (a,s)}")
   -- print(parseStringTDeclz "data State s a = St {b::s->a->s}")
+  print (parseStringType "F x -> (y, A)")
