@@ -15,7 +15,6 @@ whitespace =
       <|> comment
 
 comment :: ReadP ()
--- comment = between (string "{-") (string "-}") $ skipMany $ do get;return ()
 comment =do string "{-";  manyTill get (string "-}") ;return ()
 
 symbol :: String -> ReadP ()
@@ -29,10 +28,6 @@ pCName = lexeme $ do
   first <- satisfy isAsciiUpper
   rest <- munch (\c -> isAsciiUpper c || isAsciiLower c || isDigit c || c == '\'' || c == '_')
   return (first:rest)
-  -- let cname = first : rest
-  -- if cname `notElem` reserved
-  --   then return cname
-  --   else pfail
 
 pVName ::  ReadP String
 pVName = lexeme $ do
@@ -89,19 +84,3 @@ parseStringTDeclz s=
         [] -> Left "parse Error"
         [(idb, _)] ->  Right idb
         _ ->  error "ambiguous grammar"
-
-main :: IO ()
-main= do
-  -- print (parseStringType "F G x")
-  -- print (parseStringType "F G  a->B x")
-  -- print (parseStringType "F x -> (y, A)")
-  -- print (parseStringType "F x -> (y, A)") 
-  print (parseStringType "A")
-  print (parseStringType "z\'123 -> z{-12 -} z3-}")
-  -- print (parseStringType "z\'123 -> z{-12 -} -> zzz")
-  -- print (parseStringTDeclz "newtype Reader r a = Rd {runRd :: r -> a}")
-  -- print (parseStringTDeclz "type F x = x -> x")
-  -- print (parseStringTDeclz "newtype State s a = St {runSt :: s -> (a,s)}")
-  -- print (parseStringTDeclz "data State s a = St {runSt,b,c :: s -> (a,s)}")
-  -- print(parseStringTDeclz "data State s a = St {b::s->a->s}")
-  print (parseStringType "F x -> (y, A)")
