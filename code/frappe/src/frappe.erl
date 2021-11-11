@@ -49,7 +49,6 @@ normal({call,From},read,{_ServerId,_OriginalCapcity,_Key,Value,Capcity,_WaitList
     _->gen_statem:reply(From,Value),keep_state_and_data
   end;
 normal({call,From},{insert,From1,Key1,Value1,_C},{ServerId,OriginalCapcity,_Key,_Value,Capcity,WaitList})->
-  % case Value1==[as]
   case Capcity of
     0->gen_statem:reply(From,true),
       gen_statem:reply(From1,ok),
@@ -57,7 +56,6 @@ normal({call,From},{insert,From1,Key1,Value1,_C},{ServerId,OriginalCapcity,_Key,
     _->gen_statem:reply(From,false),gen_statem:reply(From1,{error,existKey}),
       keep_state_and_data
   end;
-% end;
 normal(cast,{insert,From1,Key1,Value,_C},{ServerId,OriginalCapcity,_Key,Value,Capcity,WaitList})->
   case Capcity of
     0->  gen_statem:reply(From1,ok),
@@ -80,10 +78,8 @@ normal(cast,{update,From1,Key1,Value1,C1},{ServerId,OriginalCapcity,_Key,_Value,
   {keep_state,{ServerId,OriginalCapcity,Key1,Value1,C1,WaitList}}
   end;
 normal(cast,{upsert,From,Fun,Arg},{ServerId,OriginalCapcity,Key,Value,Capcity,WaitList})->
-  % throw(Fun(Arg)),
   Me=self(),
   spawn(fun()->worker(Me, Fun, Arg)end),
-  % throw(From),
   {next_state,upsertState,{ServerId,From,OriginalCapcity,Key,Value,Capcity,WaitList}};
 normal(_,stop,_)->stop;
 normal(cast,{stable,From,Key,Ref},{_ServerId,_OriginalCapcity,Key,Value,_Capcity,_WaitList})->
@@ -109,7 +105,6 @@ upsertState(cast,{stable,From1,Key1,Ref},{ServerId,From2,OriginalCapcity,Key,Val
   {keep_state,{ServerId,From2, OriginalCapcity,Key,Value,Capcity,[{stable,From1,Key1,Ref}|WaitList]}};
 upsertState(_,stop,_)->stop;
 upsertState(cast,{new_value,Val,C},{ServerId,From2,OriginalCapcity,Key,Value,Capcity,WaitList})->
-  % throw(WaitList),
   case C>OriginalCapcity of
     true->gen_statem:reply(From2, {error,notEnoughCapcity}),
       case Capcity of 
@@ -117,10 +112,8 @@ upsertState(cast,{new_value,Val,C},{ServerId,From2,OriginalCapcity,Key,Value,Cap
       _->recover(ServerId,WaitList),{next_state,normal,{ServerId,OriginalCapcity,Key,Value,Capcity,[]}}
     end;
   false->case Capcity of
-    % 0->recover(ServerId,WaitList++[{insert,From2,Key,Val,C}]),gen_statem:reply(From2,ok),{next_state,emptyState,{ServerId,OriginalCapcity,Key}};
     0->recover(ServerId,WaitList++[{insert,From2,Key,Val,C}]),{next_state,emptyState,{ServerId,OriginalCapcity,Key}};
     _->recover(ServerId,WaitList++[{update,From2,Key,Val,C}]),{next_state,normal,{ServerId,OriginalCapcity,Key,Val,C,[]}}
-    % _->recover(ServerId,WaitList++[]),gen_statem:reply(From2,ok),{next_state,normal,{ServerId,OriginalCapcity,Key,Val,C,[]}}
   end
   end;
 upsertState(cast,unchange,{ServerId,From2,OriginalCapcity,Key,Value,Capcity,WaitList})->
@@ -139,14 +132,9 @@ emptyState({call,From},{insert,From1,Key1,Value,C},{ServerId,OriginalCapcity,_Ke
   gen_statem:reply(From, true),
   gen_statem:reply(From1,ok),
   {next_state,normal,{ServerId,OriginalCapcity,Key1,Value,C,[]}};
-% emptyState(cast,{insert,From1,Key1,Value,C},{ServerId,OriginalCapcity,_Key})->
-%   gen_statem:reply(From1,ok),
-%   {next_state,normal,{ServerId,OriginalCapcity,Key1,Value,C,[]}};
 emptyState({call,From},{update,From1,_Key1,_Value1,_C1},{_ServerId,_OriginalCapcity,_Key})->
   gen_statem:reply(From, false),
   gen_statem:reply(From1, {error,noneKey}),keep_state_and_data;
-% emptyState(cast,{update,From1,_Key1,_Value1,_C1},{_ServerId,_OriginalCapcity,_Key})->
-%   gen_statem:reply(From1, {error,noneKey}),keep_state_and_data;
 emptyState(cast,{upsert,From,Fun,Arg},{ServerId,OriginalCapcity,Key})->
   worker(self(), Fun, Arg),
   {next_state,upsertState,{ServerId,From,OriginalCapcity,Key,0,0,[]}};
@@ -158,7 +146,6 @@ emptyState(_,_,_)->keep_state_and_data.
 
 
 recover(PId,List)->
-  % throw(List),
   spawn(
     fun()->lists:foreach(fun(Operation)->
       case Operation of
@@ -198,10 +185,6 @@ worker(Pid,Fun,Arg)->
     end
   end).
 server({call,From},{set, Key, Value, C},{OriginalCapcity, CurrentCapcity, List})->
-  % case Key=:=key2 of
-    % true->
-    % true->throw(schedule(Key,From,C,OriginalCapcity,CurrentCapcity,List));
-  % false->
   case schedule(Key,From,C,OriginalCapcity,CurrentCapcity,List) of
     {exceed,[]}->keep_state_and_data;
     {scheduled1,NewC,NewList}->
@@ -211,7 +194,6 @@ server({call,From},{set, Key, Value, C},{OriginalCapcity, CurrentCapcity, List})
     {scheduled2,NewC,NewList,{_Key1,_OldC,Pid}}->
       gen_statem:cast(Pid,{set,Key,Value,C}),gen_statem:reply(From,ok),
       {keep_state,{OriginalCapcity,NewC,[{Key,C,Pid}|NewList]}}
-  % end
 end;
 server({call,From},{read,Key},{_OriginalCapcity, _CurrentCapcity, List})->
 
@@ -261,7 +243,7 @@ server({call,From},{update,Key,Value,C},{OriginalCapcity, CurrentCapcity, List})
       gen_statem:reply(From,{error,notFindKey}),
       keep_state_and_data;
     {scheduled2,NewC,NewList,{_Key1,_OldC,Pid}}->
-      % Here is to Judge whether can insert immediately or not
+      % Here is to Judge whether can update immediately or not
       CanUpdate=gen_statem:call(Pid, {update,From,Key,Value,C}),
       case CanUpdate of
         true->{keep_state,{OriginalCapcity,NewC,[{Key,C,Pid}|NewList]}};
@@ -275,7 +257,7 @@ server(cast,{update,From,Key,Value,C},{OriginalCapcity, CurrentCapcity, List})->
       gen_statem:reply(From,{error,notFindKey}),
       keep_state_and_data;
     {scheduled2,NewC,NewList,{_Key1,_OldC,Pid}}->
-      % Here is to Judge whether can insert immediately or not
+      % Here is to Judge whether can update immediately or not
       CanUpdate=gen_statem:call(Pid, {update,From,Key,Value,C}),
       case CanUpdate of
         true->{keep_state,{OriginalCapcity,NewC,[{Key,C,Pid}|NewList]}};
@@ -324,7 +306,6 @@ server(cast,{stable, From,Key, Ref},{_OriginalCapcity, _CurrentCapcity, List})->
   end;
 server(_,_,_)->keep_state_and_data.
 schedule(Key,From,C,OriginalCapcity, CurrentCapcity, List)->
-  % throw(spiltItem(Key, List)),
   case C>OriginalCapcity of
     true->gen_statem:reply(From,{error,capcityNotEnough}),{exceed,[]};
     false->case spiltItem(Key, List) of
