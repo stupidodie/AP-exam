@@ -10,7 +10,7 @@ instance Applicative Tree where pure = return; (<*>) = ap
 
 instance Monad Tree where
     return = Found
-    (Found x)>>= f= f x
+    (Found x)  >>= f= f x
     (Choice l) >>= f= Choice (fmap (>>= f) l)
 
 pick :: [a] -> Tree a
@@ -44,9 +44,6 @@ differentNameProduce g t n=
         (STProd st1 st2)->do  (e1,g1)<-differentNameProduce g st1 (n+1);(e2,g2)<-differentNameProduce g1 st2 (n+1); return ( Pair e1 e2,g2)
         (STArrow st1 st2)->do (t,g1)<-differentNameProduce (("X",st1):g) st2 (n+1);return (Lam "X" t,g1)
         (STRcd rcname fpList)-> let resultList=reverse (updateEnvList g fpList n) in  return (RCons rcname (map (\(x,y,_)->(x,y)) resultList),case head resultList of (_,_,z)->z)
-            -- case fpList of
-            --     []->
-            -- return  (RCons rcname (map (\(fp,st)->case differentNameProduce g st (n+1) of (Found e,g1)->(fp,e);(Choice [Found e ],g2)->(fp,e); err->error $ "Error Type "++ fp++" "++show st ++" "++show err) fpList),
         (STVar _)->case concatMap (\(fp,st')->[(fp,st') | containStype st' t]) g  of
             []->pick []
             l-> do f<- extract g t (snd $ head l) ;return (replace (fst $ head l) (f (convertSTypeToExp t)),g)
@@ -86,7 +83,6 @@ extract _ t t' = if t'==t
                     pick [\_-> Fst $ convertSTypeToExp st1]
                     pick [\_-> Snd $ convertSTypeToExp st2]
             (STArrow st1 _)->pick [\_->App  (convertSTypeToExp t') (convertSTypeToExp st1)]
-            -- STILL DO NOT KNOW WHAT THE FUCK IS HERE, JUST GUESS
             (STRcd _ fpList)->  head $ map (\(_,st)->pick[\_->App (convertSTypeToExp st) (convertSTypeToExp t')]) fpList
 
 convertSTypeToExp::SType -> Exp

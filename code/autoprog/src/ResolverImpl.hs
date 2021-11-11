@@ -16,18 +16,25 @@ declare tdList=return (updateEnv tdList tce0)
 
 updateEnv ::[TDecl]->TCEnv -> TCEnv
 updateEnv x tce = foldl (flip bindEnv) tce x
+
 functionCorr::TCName->[TVName]->PType->TCEnv->[SType]->EM SType
 functionCorr cname vnameList pt tce st =
-        if length st==length vnameList then case convertPTypeToSType pt tce (generateStList vnameList pt st) of (Right x,_)->Right x ;_->error "Error" else Left $ "bad args for tycon "++ cname
+        if length st==length vnameList 
+            then case convertPTypeToSType pt tce (generateStList vnameList pt st) of 
+                (Right x,_)->Right x 
+                _->error "Error" 
+            else Left $ "bad args for tycon "++ cname
 
 bindEnv::TDecl->TCEnv->TCEnv
 bindEnv (TDSyn (cname,vnameList) pt) tce=
-    if judgeDuplicatedName vnameList then (cname,functionCorr cname vnameList pt tce):tce else error "Not distinct variables!"
+    if judgeDuplicatedName vnameList 
+        then (cname,functionCorr cname vnameList pt tce):tce 
+        else error "Not distinct variables!"
 bindEnv (TDRcd (cname,vnameList) rcname fpList) tce=
     if judgeDuplicatedName vnameList
         then (cname,\st->
             if length st==length vnameList
-                then return (STRcd rcname  (convertfpList  fpList (generateStList' vnameList fpList st) tce)  )
+                then return (STRcd rcname  (convertfpList  fpList (generateStList' vnameList fpList st) tce) )
                 else  error $ "bad args for tycon "++ cname ):tce
         else error "Not distinct variables!"
 
@@ -47,7 +54,10 @@ getName (PTApp _ xs)= concatMap getName xs
 convertfpList::[(FName, PType)]->[SType]-> TCEnv ->[(FName, SType)]
 convertfpList fpList st tce=
     case fpList of
-        ((fname,pt):xs)->let result=convertPTypeToSType pt tce st in (fname,case result of (Right x,_)->x;err->error $"Wrong"++show err):convertfpList xs (snd result) tce
+        ((fname,pt):xs)->let result=convertPTypeToSType pt tce st 
+            in (fname,case result of 
+                (Right x,_)->x
+                err->error $"Wrong"++show err):convertfpList xs (snd result) tce
         []->[]
 judgeDuplicatedName::[TVName]->Bool
 judgeDuplicatedName ts = length ts == length ( Data.Set.fromList ts)
