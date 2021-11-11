@@ -20,8 +20,8 @@ test_suite()->
   ]}
   ].
 
-test_upsert_block_upsert() ->
-    { timeout,1000,
+test_upsert_block_upsert() ->[
+    { "Test upsert block",
         fun() ->
           {ok, FS} = frappe:fresh(10),
           ok = frappe:set(FS, key1, [a,b], 2),
@@ -40,7 +40,8 @@ test_upsert_block_upsert() ->
                                         end) end),
           timer:sleep(40),
           ?assertMatch({ok,[a,b,c,d,e,f]}, frappe:read(FS, key2))
-        end}.
+        end}
+].
   test_all_items()->[
     {
       "Basic Test All item",
