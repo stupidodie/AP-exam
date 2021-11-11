@@ -1,3 +1,8 @@
+-- Copyright (c) 2021 GuanRan Tai
+-- 
+-- This software is released under the MIT License.
+-- https://opensource.org/licenses/MIT
+
 module ParserImpl where
 
 import Defs

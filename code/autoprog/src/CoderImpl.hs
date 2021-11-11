@@ -30,23 +30,35 @@ solutions t x j=  reverse $ case j of
 
 produce :: [(String,SType)] -> SType -> Tree Exp
 produce g t= do (e,_)<-differentNameProduce g t 0;return e
-    -- THE ORIGINAL CODE
-    -- case t of
-    --     (STProd st1 st2)->do  e1<-produce g st1 ;e2<-produce g st2; return (Pair e1 e2)
-    --     (STArrow st1 st2)->do t<-produce (("X",st1):g) st2;return (Lam "X" t)
-    --     (STRcd rcname fpList)->return $ RCons rcname (map (\(fp,st)->case produce g st of Found e->(fp,e); _->error "Error Type") fpList)
-    --     (STVar v)->case concatMap (\(fp,st')->[(fp,st') | containStype st' t]) g  of
-    --         []->pick []
-    --         l-> do f<- extract g t (snd $ head l) ;return $ replace (fst $ head l) (f (convertSTypeToExp t))
+-- THE ORIGINAL CODE
+-- case t of
+--     (STProd st1 st2)->do  e1<-produce g st1 ;e2<-produce g st2; return (Pair e1 e2)
+--     (STArrow st1 st2)->do t<-produce (("X",st1):g) st2;return (Lam "X" t)
+--     (STRcd rcname fpList)->return $ RCons rcname (map (\(fp,st)->case produce g st of Found e->(fp,e); _->error "Error Type") fpList)
+--     (STVar v)->case concatMap (\(fp,st')->[(fp,st') | containStype st' t]) g  of
+--         []->pick []
+--         l-> do f<- extract g t (snd $ head l) ;return $ replace (fst $ head l) (f (convertSTypeToExp t))
 differentNameProduce::[(String,SType)] -> SType->Int -> Tree (Exp,[(String,SType)])
 differentNameProduce g t n=
      case t of
-        (STProd st1 st2)->do  (e1,g1)<-differentNameProduce g st1 (n+1);(e2,g2)<-differentNameProduce g1 st2 (n+1); return ( Pair e1 e2,g2)
-        (STArrow st1 st2)->do (t,g1)<-differentNameProduce (("X",st1):g) st2 (n+1);return (Lam "X" t,g1)
-        (STRcd rcname fpList)-> let resultList=reverse (updateEnvList g fpList n) in  return (RCons rcname (map (\(x,y,_)->(x,y)) resultList),case head resultList of (_,_,z)->z)
-        (STVar _)->case concatMap (\(fp,st')->[(fp,st') | containStype st' t]) g  of
-            []->pick []
-            l-> do f<- extract g t (snd $ head l) ;return (replace (fst $ head l) (f (convertSTypeToExp t)),g)
+        (STProd st1 st2)->
+            do  (e1,g1)<-differentNameProduce g st1 (n+1)
+                (e2,g2)<-differentNameProduce g1 st2 (n+1) 
+                return (Pair e1 e2,g2)
+        (STArrow st1 st2)->
+            do 
+                (t,g1)<-differentNameProduce ((givenName n,st1):g) st2 (n+1)
+                return (Lam (givenName n) t,g1)
+        (STRcd rcname fpList)-> 
+            let resultList=reverse (updateEnvList g fpList n) 
+                in  return (RCons rcname (map (\(x,y,_)->(x,y)) resultList),
+                case head resultList of (_,_,z)->z)
+        (STVar _)->
+            case concatMap (\(fp,st')->[(fp,st') | containStype st' t]) g  of
+                []->pick []
+                l-> do 
+                    f<- extract g t (snd $ head l) 
+                    return (replace (fst $ head l) (f (convertSTypeToExp t)),g)
 
 updateEnvList::[(String,SType)]->[(FName,SType)] ->Int->[(FName, Exp,[(String,SType)])]
 updateEnvList _ [] _=[]
