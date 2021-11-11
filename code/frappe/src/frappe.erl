@@ -322,11 +322,6 @@ server(cast,{stable, From,Key, Ref},{_OriginalCapcity, _CurrentCapcity, List})->
     nothing->From!{error,noKey},keep_state_and_data;
     {ok,Pid}->gen_statem:cast(Pid,{stable,From,Key,Ref}),keep_state_and_data
   end;
-server(cast,{stable,From, Key, Ref},{_OriginalCapcity, _CurrentCapcity, List})->
-  case findPid(List, Key) of
-    nothing->From,{error,noKey},keep_state_and_data;
-    {ok,Pid}->gen_statem:cast(Pid,{stable,From,Key,Ref}),keep_state_and_data
-  end;
 server(_,_,_)->keep_state_and_data.
 schedule(Key,From,C,OriginalCapcity, CurrentCapcity, List)->
   % throw(spiltItem(Key, List)),
