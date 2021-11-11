@@ -4,8 +4,8 @@
 %% https://opensource.org/licenses/MIT
 -module(test_eunit_frappe).
 -include_lib("eunit/include/eunit.hrl").
--export([test_eunit_test_all/0]).
-test_eunit_test_all()->eunit:test(test_suite(), [verbose]).
+-export([test_all/0]).
+test_all()->eunit:test(test_suite(), [verbose]).
 test_suite()->
     [ {"Basic Test", spawn,
   [

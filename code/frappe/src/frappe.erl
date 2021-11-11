@@ -33,7 +33,7 @@ upsert(FS, Key, Fun) ->
   gen_statem:call(FS, {upsert, Key, Fun}).
 
 stable(FS, Key, Ref) ->
-  gen_statem:call(FS, {stable, Key, Ref}).
+  gen_statem:cast(FS, {stable, self(),Key, Ref}).
 
 all_items(FS) ->
   gen_statem:call(FS, all_items).
@@ -87,7 +87,7 @@ normal(cast,{upsert,From,Fun,Arg},{ServerId,OriginalCapcity,Key,Value,Capcity,Wa
   {next_state,upsertState,{ServerId,From,OriginalCapcity,Key,Value,Capcity,WaitList}};
 normal(_,stop,_)->stop;
 normal(cast,{stable,From,Key,Ref},{_ServerId,_OriginalCapcity,Key,Value,_Capcity,_WaitList})->
-  gen_statem:reply(From,{Ref,Value}),keep_state_and_data;
+ From!{Ref,Value},keep_state_and_data;
 normal(cast,_,_)->
   keep_state_and_data.
 upsertState(cast,{set,_Key1,Value1,C1},{ServerId,_From1,OriginalCapcity,Key,_Value,_Capcity,_WaitList})->
@@ -317,14 +317,14 @@ server({call,From},stop,{_OriginalCapcity, _CurrentCapcity, List})->
   lists:map(fun({_K,_C,P})->gen_statem:cast(P,stop)end,List),
   gen_statem:reply(From, ok),
   stop;
-server({call,From},{stable, Key, Ref},{_OriginalCapcity, _CurrentCapcity, List})->
+server(cast,{stable, From,Key, Ref},{_OriginalCapcity, _CurrentCapcity, List})->
   case findPid(List, Key) of
-    nothing->gen_statem:reply(From,{error,noKey}),keep_state_and_data;
+    nothing->From!{error,noKey},keep_state_and_data;
     {ok,Pid}->gen_statem:cast(Pid,{stable,From,Key,Ref}),keep_state_and_data
   end;
 server(cast,{stable,From, Key, Ref},{_OriginalCapcity, _CurrentCapcity, List})->
   case findPid(List, Key) of
-    nothing->gen_statem:reply(From,{error,noKey}),keep_state_and_data;
+    nothing->From,{error,noKey},keep_state_and_data;
     {ok,Pid}->gen_statem:cast(Pid,{stable,From,Key,Ref}),keep_state_and_data
   end;
 server(_,_,_)->keep_state_and_data.
