@@ -9,10 +9,7 @@ lexeme :: ReadP a -> ReadP a
 lexeme p = do a <- p; whitespace; return a
 
 whitespace :: ReadP ()
-whitespace =
-  skipMany $
-    do satisfy (`elem` " \n\t"); return ()
-      <|> comment
+whitespace =skipMany $ do satisfy (`elem` " \n\t"); return () <|> comment
 
 comment :: ReadP ()
 comment =do string "{-";  manyTill get (string "-}") ;return ()
@@ -71,13 +68,23 @@ pTDeclz:: ReadP [TDecl]
 pTDeclz=do tDel <-pTDecl  `sepBy` symbol ";"; return tDel <++ return mempty
 
 pFDecl :: ReadP [(String, PType)]
-pFDecl=do field <-pVName  `sepBy1` symbol ","; symbol "::" ; type'<-pType; return $ map (\x-> (x,type')) field
+pFDecl=do 
+    field <-pVName  `sepBy1` symbol ","
+    symbol "::" 
+    type'<-pType
+    return $ map (\x-> (x,type')) field
 pType:: ReadP PType
 pType=pTypeOther `chainr1` (do symbol "->"; return ( \x y->  PTApp "(->)" [x,y] ))
 pTypeOther ::ReadP PType
 pTypeOther =  pTypeVar <++ pTypeCon<++ pTypeScal <++ pType1
 pTypeScal:: ReadP PType
-pTypeScal=do symbol "("; type1<-pType;symbol ",";type2<-pType;symbol ")";return (PTApp "(,)" [type1,type2])
+pTypeScal=do 
+  symbol "(" 
+  type1<-pType
+  symbol ","
+  type2<-pType
+  symbol ")"
+  return (PTApp "(,)" [type1,type2])
 pType1::ReadP PType
 pType1 = do symbol "("; type' <- pType; symbol ")"; return type'
 pTypeVar:: ReadP PType

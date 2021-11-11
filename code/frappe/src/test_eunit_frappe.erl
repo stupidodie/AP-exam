@@ -230,30 +230,7 @@ test_upsert_block_upsert() ->[
           ?assertEqual({ok,1},frappe:read(FS, key1)),
           ?assertEqual(nothing,frappe:read(FS, key2))
         end
-      },
-      {
-        "Basic Update test2",
-        fun()->
-          {ok,FS}=frappe:fresh(50),
-          frappe:set(FS,0,97,3),
-frappe:update(FS,0,97,3),
-frappe:set(FS,1,97,8),
-frappe:set(FS,2,97,9),
-spawn(fun()->
-frappe:update(FS,0,97,9)end),
-frappe:set(FS,11,97,20),
-frappe:set(FS,3,97,3),
-frappe:update(FS,1,97,13),
-frappe:update(FS,0,97,11),
-frappe:update(FS,1,97,7),
-frappe:update(FS,4,97,20),
-frappe:set(FS,0,97,3),
-frappe:update(FS,0,97,3)
-          
-          % ?assertEqual(ok,frappe:update(FS, key2, [d,e], 6)),
-          
-        end
-      }
+      } 
     ].
   test_insert()->
     [
