@@ -47,8 +47,26 @@ pTDHead=do cname<-pCName; tvNameList<-pTVarz; return (cname,tvNameList)
 pTDecl :: ReadP TDecl
 pTDecl=
   choice [  do symbol "type"; tdHead<-pTDHead; symbol "="; TDSyn tdHead <$> pType,
-            do symbol "newtype"; tdHead'<-pTDHead;symbol "="; rcname<-pCName; symbol "{"; field<-pVName;symbol "::";type'<-pType; symbol "}";return (TDRcd  tdHead' rcname [(field,type')]),
-            do symbol "data"; tdHead<-pTDHead;symbol "="; rcname<-pCName; symbol "{"; fDeclz<-pFDeclz; symbol "}" ;return (TDRcd  tdHead rcname fDeclz)]
+            do 
+              symbol "newtype" 
+              tdHead'<-pTDHead
+              symbol "="
+              rcname<-pCName
+              symbol "{"
+              field<-pVName
+              symbol "::"
+              type'<-pType
+              symbol "}"
+              return (TDRcd  tdHead' rcname [(field,type')]),
+            do 
+              symbol "data"
+              tdHead<-pTDHead
+              symbol "="
+              rcname<-pCName
+              symbol "{"
+              fDeclz<-pFDeclz
+              symbol "}" 
+              return (TDRcd  tdHead rcname fDeclz)]
 pTDeclz:: ReadP [TDecl]
 pTDeclz=do tDel <-pTDecl  `sepBy` symbol ";"; return tDel <++ return mempty
 
