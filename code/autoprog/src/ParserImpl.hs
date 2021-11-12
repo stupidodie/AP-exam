@@ -84,5 +84,3 @@ parseStringTDeclz s=
         [] -> Left "parse Error"
         [(idb, _)] ->  Right idb
         _ ->  error "ambiguous grammar"
-
-main=print (parseStringType "z123 -> z{-12 -} -> zzz")
