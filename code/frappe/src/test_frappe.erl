@@ -3,13 +3,12 @@
 -export([test_all/0, test_everything/0]).
 -export([mktrans/2,terminating_transformation/1]). % Remember to export the other functions from Q2.2
 -include_lib("eqc/include/eqc.hrl").
--export([prop_cache_under_capacity/0]).
+-export([prop_cache_under_capacity/0,prop_capacity_invariant/0]).
 % You are allowed to split your testing code in as many files as you
 % think is appropriate, just remember that they should all start with
 % 'test_'.
 % But you MUST have a module (this file) called test_frappe.
--import(test_eunit_frappe,[test_eunit_test_all/0]).
-test_all() ->eqc:quickcheck(prop_cache_under_capacity()),eqc:quickcheck(prop_cache_invariant()).
+test_all() ->eqc:quickcheck(prop_cache_under_capacity()),eqc:quickcheck(prop_capacity_invariant()),test_eunit_frappe:test_all().
 test_everything() ->
   test_all().
 opr_no_loop()->eqc_gen:elements([{throw,new},{throw,unchange},{normal,new},{normal,unchange}]).
@@ -25,7 +24,7 @@ prop_cache_under_capacity()->oneof([
   prop_upsert_no_loop_under_capcity(),
   prop_upsert_loop()
 ]).
-prop_cache_invariant()->oneof([
+prop_capacity_invariant()->oneof([
   prop_all_item(),
   prop_read(),
   prop_fresh_and_stop(),
