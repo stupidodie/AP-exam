@@ -1,7 +1,3 @@
-%% Copyright (c) 2021 GuanRan Tai
-%% 
-%% This software is released under the MIT License.
-%% https://opensource.org/licenses/MIT
 -module(test_eunit_frappe).
 -include_lib("eunit/include/eunit.hrl").
 -export([test_all/0]).
