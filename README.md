@@ -1,3 +1,3 @@
 # AP-exam
 
-My Advanced programming exam 2021 in KU hand-out. 
+My Advanced programming exam 2021 in KU. 
